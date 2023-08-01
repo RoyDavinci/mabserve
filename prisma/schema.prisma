@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id            Int        @id @default(autoincrement())
+  email         String     @unique
+  first_name    String     @db.VarChar(20)
+  last_name     String?    @db.VarChar(20)
+  password      String     @db.VarChar(200)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime?
+  login_at      DateTime?
+  role          Users_role @default(User)
+  emailVerified Boolean    @default(false)
+  otp           String?
+  accountStatus Int        @default(1234567890)
+  phone         String     @db.VarChar(100)
+  wallet        wallet?
+}
+
+model wallet {
+  code           Int     @id
+  user_id        Int     @unique
+  balance_before Decimal @default(0.00) @db.Decimal(9, 2)
+  balance_after  Decimal @default(0.00) @db.Decimal(9, 2)
+  balance        Decimal @default(0.00) @db.Decimal(9, 2)
+  Users          Users   @relation(fields: [user_id], references: [id])
+}
+
+enum Users_role {
+  Super_Admin
+  Admin
+  User
+}

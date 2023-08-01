@@ -1,0 +1,48 @@
+{
+	"env": {
+		"browser": true,
+		"es2021": true
+	},
+	"extends": "standard-with-typescript",
+	"overrides": [],
+	"parserOptions": {
+		"ecmaVersion": "latest",
+		"sourceType": "module"
+	},
+	"rules": {
+		// Add any custom rules or overrides here
+		"@typescript-eslint/no-unused-vars": "error",
+		// to enforce using type for object type definitions, can be type or interface
+		"@typescript-eslint/consistent-type-definitions": ["error", "type"],
+		"quotes": ["error", "double"],
+		"no-console": "error",
+		"no-shadow": "error",
+		"camelcase": "error",
+		"prefer-const": "error",
+		"arrow-body-style": ["error", "as-needed"],
+		"indent": "off",
+		"no-tabs": "off",
+		"import/no-extraneous-dependencies": "off",
+		"import/extensions": [
+			"error",
+			"ignorePackages",
+			{
+				"js": "never",
+				"jsx": "never",
+				"ts": "never",
+				"tsx": "never"
+			}
+		]
+	},
+	"settings": {
+		"import/resolver": {
+			"node": {
+				"extensions": [".js", ".jsx", ".ts", ".tsx"]
+				// "moduleDirectory": ["node_modules", "src/"]
+			}
+		}
+	},
+	"parser": "@typescript-eslint/parser",
+
+	"plugins": ["@typescript-eslint"]
+}
