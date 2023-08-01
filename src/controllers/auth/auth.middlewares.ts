@@ -29,7 +29,7 @@ export const validateSignupData = [
     .bail()
     .isLength({ min: 4, max: 50 })
     .withMessage('min: 4, max:50 password character'),
-  validationErrorHandler,
+  validationErrorHandler
 ]
 
 export const getUserValidation = []

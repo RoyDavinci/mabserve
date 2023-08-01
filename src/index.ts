@@ -1,13 +1,15 @@
-import express, { Express, Request, Response } from 'express'
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+import express from 'express'
 import dotenv from 'dotenv'
 import passport from 'passport'
 import { PassportService } from './common/passport'
 import authRouter from './routes/routes'
 import sessionInstance from './common/session'
+import logger from './common/logger'
 
 dotenv.config()
 
-const app: Express = express()
+const app = express()
 const port = process.env.PORT
 
 app.use(express.json())
@@ -20,5 +22,5 @@ app.use(passport.session())
 app.use('/api', authRouter)
 
 app.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`)
+  logger.info(`⚡️[server]: Server is running at http://localhost:${port}`)
 })

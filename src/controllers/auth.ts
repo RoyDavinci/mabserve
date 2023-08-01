@@ -1,4 +1,5 @@
-import { Request, Response } from 'express'
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+import { type Request, type Response } from 'express'
 
 export const getUser = async (req: Request, res: Response) => {
   try {

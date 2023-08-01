@@ -1,34 +1,39 @@
-import { NextFunction, Request, Response } from 'express'
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/strict-boolean-expressions */
+import { type NextFunction, type Request, type Response } from 'express'
 import STATUS_CODES from '../constants/httpCode'
 import passport from 'passport'
+import logger from './logger'
 
 export const authenticateLocal = (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   try {
     return passport.authenticate(
       'local',
       (error: Error, user: Express.User, info: { message: string }) => {
-        if (error)
+        if (error) {
           return res
             .status(400)
             .json({ message: info.message, error: error.message })
+        }
 
         if (!user) {
           return res.status(400).json({ message: info.message })
         }
 
-        return req.logIn(user, err => {
-          if (err)
+        req.logIn(user, err => {
+          if (err) {
             return res
               .status(400)
               .json({ message: info.message, error: err.message })
+          }
 
-          return next()
+          next()
         })
-      },
+      }
     )(req, res, next)
   } catch (error) {
     return res
@@ -40,7 +45,7 @@ export const authenticateLocal = (
 export const authenticateJWT = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   if (!req.headers.authorization) {
     return res.status(400).json({ message: 'header token needed' })
@@ -58,15 +63,15 @@ export const authenticateJWT = async (
           return res.status(404).json({ message: 'user does not exist' })
         }
 
-        return req.logIn(user, err => {
+        req.logIn(user, err => {
           if (err) {
-            console.log(err)
+            logger.error(err)
             return res.status(403).json({ message: err.message })
           }
 
-          return next()
+          next()
         })
-      },
+      }
     )(req, res, next)
   } catch (error) {
     return res.status(402).json({ message: 'user not found', error })
