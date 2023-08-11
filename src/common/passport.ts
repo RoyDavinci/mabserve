@@ -36,9 +36,7 @@ export const PassportService = (passport: PassportStatic) => {
       new PassportLocal.Strategy(async function (username, password, done) {
         try {
           const user = await prisma.users.findFirst({
-            where: {
-              email: username
-            }
+            where: {OR: [{email: username}, {phone:username}]}
           })
           if (user == null) {
             done(null, false, {

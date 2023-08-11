@@ -48,8 +48,24 @@ export const getAllUsers = async (req: Request, res: Response) => {
   }
 }
 
+export const createPin = async (req: Request, res: Response) => {
+  const { pin } = req.body
+
+  try {
+    if (!req.user) return res.status(400).json({ message: 'not authenticated' })
+    const updated = await prisma.users.update({
+      where: { email: req.user.email },
+      data: { pin: Number(pin) }
+    })
+    return res.status(200).json({ message: 'user updated', updated })
+  } catch (error) {
+    logger.info(error)
+    return res.status(400).json({ error })
+  }
+}
+
 export const createUser = async (req: Request, res: Response) => {
-  const { email, first_name, last_name, password, phone } = req.body
+  const { email, fullName, password, phone } = req.body
 
   try {
     const findUser = await prisma.users.findUnique({ where: { email } })
@@ -59,8 +75,8 @@ export const createUser = async (req: Request, res: Response) => {
         .json({ message: 'user already exists', success: false })
     }
     const hashedPassword = await bcrypt.hash(password, 10)
-    const newUser = await prisma.users.create({
-      data: { email, password: hashedPassword, last_name, first_name, phone }
+    const createdUser = await prisma.users.create({
+      data: { email, password: hashedPassword, fullName, phone }
     })
     const walletCode = generateRandomNumber()
     const findWalletCode = await prisma.wallet.findUnique({
@@ -68,24 +84,43 @@ export const createUser = async (req: Request, res: Response) => {
     })
     if (findWalletCode != null) {
       await prisma.wallet.create({
-        data: { code: generateRandomNewNumber(), user_id: newUser.id }
+        data: { code: generateRandomNewNumber(), user_id: createdUser.id }
+      })
+      const token = generateToken({
+        id: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role
+      })
+      const newUser = await prisma.users.findUnique({
+        where: { id: createdUser.id },
+        include: { wallet: true }
+      })
+      return res.status(HTTP_STATUS_CODE.CREATED).json({
+        message: 'user created',
+        success: true,
+        user: { newUser },
+        token
       })
     } else {
       await prisma.wallet.create({
-        data: { code: walletCode, user_id: newUser.id }
+        data: { code: walletCode, user_id: createdUser.id }
+      })
+      const token = generateToken({
+        id: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role
+      })
+      const newUser = await prisma.users.findUnique({
+        where: { id: createdUser.id },
+        include: { wallet: true }
+      })
+      return res.status(HTTP_STATUS_CODE.CREATED).json({
+        message: 'user created',
+        success: true,
+        user: { newUser },
+        token
       })
     }
-    const token = generateToken({
-      id: newUser.id,
-      email: newUser.email,
-      role: newUser.role
-    })
-    return res.status(HTTP_STATUS_CODE.CREATED).json({
-      message: 'user created',
-      success: true,
-      user: { newUser },
-      token
-    })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
@@ -167,7 +202,7 @@ export const getUser = async (req: Request, res: Response) => {
 }
 
 export const editUserInfo = async (req: Request, res: Response) => {
-  const { email, password, first_name, last_name, phone } = req.body
+  const { email, password, fullName, phone } = req.body
   const { id } = req.params
 
   try {
@@ -194,8 +229,7 @@ export const editUserInfo = async (req: Request, res: Response) => {
           data: {
             email,
             password: hashedPassword,
-            first_name,
-            last_name,
+            fullName,
             phone
           }
         })
@@ -207,7 +241,7 @@ export const editUserInfo = async (req: Request, res: Response) => {
       }
       const updatedUser = await prisma.users.update({
         where: { id: Number(id) },
-        data: { email, first_name, last_name, phone }
+        data: { email, fullName, phone }
       })
       return res.status(HTTP_STATUS_CODE.ACCEPTED).json({
         message: 'user updated',
@@ -249,7 +283,8 @@ export const signIn = async (req: Request, res: Response) => {
 
   try {
     const findUser = await prisma.users.findUnique({
-      where: { email: username }
+      where: { email: username },
+      include: { wallet: true }
     })
     if (findUser == null) {
       return res
@@ -271,7 +306,12 @@ export const signIn = async (req: Request, res: Response) => {
     })
     return res
       .status(200)
-      .json({ message: 'successfully logged in', user: { findUser }, token })
+      .json({
+        message: 'successfully logged in',
+        success: true,
+        user: { findUser },
+        token
+      })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
@@ -313,7 +353,7 @@ export const deleteUser = async (req: Request, res: Response) => {
       await prisma.users.delete({ where: { id: Number(id) } })
       return res
         .status(HTTP_STATUS_CODE.ACCEPTED)
-        .json({ message: 'user deleted' })
+        .json({ message: 'user deleted', success: true })
     }
     return res.status(400).json({ message: 'user not authenticated' })
   } catch (error) {

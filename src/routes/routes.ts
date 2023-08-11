@@ -1,19 +1,13 @@
-// import { Router } from 'express'
-// import { authenticateJWT } from '../common/authenticate'
-// import { get } from '../controllers/auth'
-// import { getUser } from '../controllers/auth/auth.controllers'
-
-// const authRouter = Router()
-// authRouter.get('/', get)
-// authRouter.post('/check/:id', authenticateJWT, getUser)
-
-// export default authRouter
 
 import { Router } from 'express'
 import authRouter from '../controllers/auth/auth.service'
+import ussdRouter from '../controllers/ussd/ussd.service'
+import paymentRouter from '../controllers/payment/payment.service'
 
 const apiV1Router = Router()
 
 apiV1Router.use('/auth', authRouter)
+apiV1Router.use("/ussd", ussdRouter)
+apiV1Router.use("/payment", paymentRouter)
 
 export default apiV1Router

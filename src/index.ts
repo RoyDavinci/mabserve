@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-import express from 'express'
+import express, { type Request, type Response } from 'express'
 import dotenv from 'dotenv'
 import passport from 'passport'
 import { PassportService } from './common/passport'
@@ -19,6 +19,7 @@ app.use(sessionInstance)
 PassportService(passport)
 app.use(passport.initialize())
 app.use(passport.session())
+app.get("/", (req: Request, res: Response) => res.status(200).json({message:"welcome"}))
 app.use('/api', authRouter)
 
 app.listen(port, () => {

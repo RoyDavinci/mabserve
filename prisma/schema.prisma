@@ -10,8 +10,7 @@ datasource db {
 model Users {
   id            Int        @id @default(autoincrement())
   email         String     @unique
-  first_name    String     @db.VarChar(20)
-  last_name     String?    @db.VarChar(20)
+  fullName      String     @db.VarChar(100)
   password      String     @db.VarChar(200)
   created_at    DateTime   @default(now())
   updated_at    DateTime?
@@ -19,8 +18,9 @@ model Users {
   role          Users_role @default(User)
   emailVerified Boolean    @default(false)
   otp           String?
+  pin           Int?
   accountStatus Int        @default(1234567890)
-  phone         String     @db.VarChar(100)
+  phone         String     @unique @db.VarChar(100)
   wallet        wallet?
 }
 

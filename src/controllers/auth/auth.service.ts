@@ -14,6 +14,7 @@ authRouter.post(
   middleware.validateSignupData,
   controllers.createUser
 )
+authRouter.patch("/pin", authenticateJWT, controllers.createPin)
 authRouter.post('/login', authenticateLocal, controllers.signIn)
 authRouter.delete('/delete-user/:id', authenticateJWT, controllers.deleteUser)
 authRouter.patch('/update-user/:id', authenticateJWT, controllers.editUserInfo)
