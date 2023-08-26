@@ -74,7 +74,7 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
         prisma.transactions.create({
           data: {
             email,
-            name: req.user.fullName,
+            name: req.user.first_name,
             amount,
             reference: response.data.reference,
             user_id: req.user.id,
@@ -110,7 +110,7 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
 }
 
 export const transferToAirbank = async (req: Request, res: Response) => {
-  const { phone_number, amount } = req.body
+  const { wallet, amount, narration } = req.body
 
   try {
     if (req.user == null)
@@ -118,12 +118,13 @@ export const transferToAirbank = async (req: Request, res: Response) => {
         .status(403)
         .json({ message: 'authentication required', success: false })
     const findUser = await prisma.users.findUnique({
-      where: { phone: phone_number }
+      where: { id: req.user.id },
+      include: { wallet: true }
     })
     if (findUser == null)
       return res.status(400).json({ message: 'user not found', succes: false })
     const fetchUser = await prisma.wallet.findUnique({
-      where: { user_id: req.user.id }
+      where: { code: wallet }
     })
     if (fetchUser == null)
       return res
@@ -134,16 +135,36 @@ export const transferToAirbank = async (req: Request, res: Response) => {
         message: 'insufficient balance to complete transaction',
         success: false
       })
-    await prisma.$transaction([
-      prisma.wallet.update({
-        where: { user_id: req.user.id },
-        data: { balance: { decrement: Number(amount) } }
-      }),
-      prisma.wallet.update({
-        where: { user_id: fetchUser.user_id },
-        data: { balance: { increment: Number(amount) } }
+
+    const { data } = await axios.post(
+      `${config.CHAMS_MOBILE_BASEURL}/transfer/wallet-to-wallet`,
+      {
+        sender_wallet_number: findUser.wallet?.code,
+        receiver_wallet_number: fetchUser.code,
+        transfer_amount: amount,
+        narration
+      }
+    )
+    logger.info(JSON.stringify(data))
+    try {
+      await prisma.$transaction([
+        prisma.wallet.update({
+          where: { user_id: req.user.id },
+          data: { balance: { decrement: Number(amount) } }
+        }),
+        prisma.wallet.update({
+          where: { user_id: findUser.id },
+          data: { balance: { increment: Number(amount) } }
+        })
+      ])
+    } catch (error) {
+      logger.info(error)
+      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+        error,
+        message: 'an error occured on crediting a user',
+        success: false
       })
-    ])
+    }
     return res
       .status(200)
       .json({ message: 'user credited successfully', success: true })
@@ -152,13 +173,11 @@ export const transferToAirbank = async (req: Request, res: Response) => {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
-          success: false
+          success: false,
+          err: error.message
         })
       }
       logger.info(error)
@@ -166,10 +185,15 @@ export const transferToAirbank = async (req: Request, res: Response) => {
         .status(HTTP_STATUS_CODE.BAD_REQUEST)
         .json({ error, success: false })
     }
-    logger.info(error)
+    const err = error as AxiosError
+    if (err !== null) {
+      logger.info('Err')
+      logger.error(err.response?.data)
+      return res.status(400).json({ message: err.response?.data })
+    }
     return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
       error,
-      message: 'an error occured on creating a user',
+      message: 'an error occured on crediting a wallet',
       success: false
     })
   }

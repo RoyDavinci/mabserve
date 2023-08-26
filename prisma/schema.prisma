@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
 }
 
 datasource db {
@@ -9,30 +9,47 @@ datasource db {
 }
 
 model Users {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
-  fullName      String         @db.VarChar(100)
-  password      String         @db.VarChar(200)
-  created_at    DateTime       @default(now())
-  updated_at    DateTime?
-  login_at      DateTime?
-  role          Users_role     @default(User)
-  emailVerified Boolean        @default(false)
-  otp           String?
-  pin           Int?
-  accountStatus Int            @default(1234567890)
-  phone         String         @unique @db.VarChar(100)
-  wallet        wallet?
-  transaction   transactions[]
+  id                 Int            @id @default(autoincrement())
+  email              String         @unique
+  password           String         @db.VarChar(200)
+  created_at         DateTime       @default(now())
+  updated_at         DateTime?
+  login_at           DateTime?
+  role               Users_role     @default(User)
+  emailVerified      Boolean        @default(false)
+  otp                String?
+  accountStatus      Int            @default(1234567890)
+  phone              String         @unique @db.VarChar(100)
+  pin                Int?
+  address            String         @db.VarChar(100)
+  date_of_birth      DateTime?
+  first_name         String         @db.VarChar(100)
+  last_name          String         @db.VarChar(100)
+  middle_name        String         @db.VarChar(100)
+  place_of_birth     String         @db.VarChar(100)
+  state_of_Residence String         @db.VarChar(100)
+  phone_verified     Boolean        @default(false)
+  photo_url          String         @db.Text
+  transaction        transactions[]
+  wallet             wallet?
+
+  @@index([id])
+  @@index([email], map: "unique_email_idx")
 }
 
 model wallet {
-  code           Int     @id
+  code           Int     @id @default(autoincrement())
+  wallet_id      String  @db.VarChar(40)
   user_id        Int     @unique
   balance_before Decimal @default(0.00) @db.Decimal(9, 2)
   balance_after  Decimal @default(0.00) @db.Decimal(9, 2)
   balance        Decimal @default(0.00) @db.Decimal(9, 2)
+  account_status String? @db.VarChar(20)
+  name           String? @db.VarChar(20)
   Users          Users   @relation(fields: [user_id], references: [id])
+
+  @@index([code])
+  @@index([user_id], map: "unique_user_idx")
 }
 
 model transactions {
@@ -50,6 +67,40 @@ model transactions {
   reference          String  @unique
   reason             String?
   Users              Users   @relation(fields: [user_id], references: [id])
+
+  @@index([user_id], map: "transactions_user_id_fkey")
+}
+
+model alternative_bundles {
+  id            Int     @id @default(autoincrement())
+  network       String  @default("MTN") @db.VarChar(200)
+  actual_amount Decimal @db.Decimal(8, 2)
+  alt_amount    Decimal @db.Decimal(8, 2)
+  allowance     String? @db.VarChar(200)
+  code          String  @db.VarChar(5)
+  alt_code      String? @db.VarChar(200)
+}
+
+model directbundle_requests {
+  id                Int       @id @default(autoincrement())
+  network           String    @db.VarChar(20)
+  category          String    @db.VarChar(50)
+  actual_amount     Decimal   @db.Decimal(8, 2)
+  price             Decimal   @db.Decimal(8, 2)
+  data_amount       Float?
+  allowance         String    @db.VarChar(50)
+  code              String    @db.VarChar(5)
+  habari_code       String?   @db.VarChar(200)
+  validity          String    @db.VarChar(100)
+  tariff            String    @db.VarChar(200)
+  bundlecode        String?   @db.VarChar(10)
+  ringoeq           String?   @db.VarChar(100)
+  ringoamount       Float?
+  product_id        String?   @db.VarChar(200)
+  biller_id         Int       @default(5)
+  created_at        DateTime? @db.Timestamp(0)
+  updated_at        DateTime? @db.Timestamp(0)
+  creditswitch_code String?   @db.VarChar(199)
 }
 
 enum Users_role {

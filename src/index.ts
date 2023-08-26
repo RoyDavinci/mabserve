@@ -19,7 +19,9 @@ app.use(sessionInstance)
 PassportService(passport)
 app.use(passport.initialize())
 app.use(passport.session())
-app.get("/", (req: Request, res: Response) => res.status(200).json({message:"welcome"}))
+app.get('/', (req: Request, res: Response) =>
+  res.status(200).json({ message: 'welcome' })
+)
 app.use('/api', authRouter)
 
 app.listen(port, () => {

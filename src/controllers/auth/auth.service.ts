@@ -7,16 +7,19 @@ import { authenticateJWT, authenticateLocal } from '../../common/authenticate'
 const authRouter = Router()
 
 authRouter.get('/', controllers.getAllUsers)
+authRouter.get('/kegowUsers', controllers.getUsersFromKegow)
+authRouter.get('/:phone', controllers.getUserByPhone)
 authRouter.get('/:id', authenticateJWT, controllers.getUser)
-
+authRouter.post('/walletId', controllers.confirmWalletNumber)
 authRouter.post(
   '/create',
   middleware.validateSignupData,
   controllers.createUser
 )
-authRouter.patch("/pin", authenticateJWT, controllers.createPin)
+
+authRouter.patch('/pin', authenticateJWT, controllers.createPin)
 authRouter.post('/login', authenticateLocal, controllers.signIn)
 authRouter.delete('/delete-user/:id', authenticateJWT, controllers.deleteUser)
-authRouter.patch('/update-user/:id', authenticateJWT, controllers.editUserInfo)
+// authRouter.patch('/update-user/:id', authenticateJWT, controllers.editUserInfo)
 
 export default authRouter

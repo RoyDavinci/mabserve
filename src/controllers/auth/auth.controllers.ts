@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
@@ -8,11 +11,15 @@ import { Prisma } from '@prisma/client'
 import prisma from '../../db/prisma'
 import HTTP_STATUS_CODE from '../../constants/httpCode'
 import logger from '../../common/logger'
-import {
-  generateRandomNewNumber,
-  generateRandomNumber
-} from '../../common/generateRandomNumberr'
 import generateToken from '../../common/generateToken'
+import axios, { type AxiosError } from 'axios'
+import config from '../../config'
+import {
+  GottenUser,
+  USerByPhone,
+  type KegowUserInterface,
+  ErrorPhone
+} from './auth.interfaces'
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -25,12 +32,10 @@ export const getAllUsers = async (req: Request, res: Response) => {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
           success: false
         })
       }
@@ -64,74 +69,127 @@ export const createPin = async (req: Request, res: Response) => {
   }
 }
 
-export const createUser = async (req: Request, res: Response) => {
-  const { email, fullName, password, phone } = req.body
+export const confirmKegowUser = async (req: Request, res: Response) => {
+  const { phone } = req.params
 
   try {
-    const findUser = await prisma.users.findUnique({ where: { email } })
-    if (findUser != null) {
+    const { data } = await axios.get(
+      `${config.CHAMS_MOBILE_BASEURL}/user/${phone}`,
+      { headers: { Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}` } }
+    )
+    return res.status(200).json({ data })
+  } catch (error) {
+    const err = error as AxiosError
+    if (err) {
       return res
         .status(400)
-        .json({ message: 'user already exists', success: false })
+        .json({ message: 'error', error: err.response?.data })
     }
-    const hashedPassword = await bcrypt.hash(password, 10)
-    const createdUser = await prisma.users.create({
-      data: { email, password: hashedPassword, fullName, phone }
-    })
-    const walletCode = generateRandomNumber()
-    const findWalletCode = await prisma.wallet.findUnique({
-      where: { code: walletCode }
-    })
-    if (findWalletCode != null) {
+  }
+  return res.status(400).json({ message: Error })
+}
+
+export const createUser = async (req: Request, res: Response) => {
+  const {
+    email,
+    first_name,
+    last_name,
+    middle_name,
+    date_of_birth,
+    address,
+    place_of_birth,
+    password,
+    phone_number,
+    state_of_residence,
+    gender
+  } = req.body
+
+  try {
+    const { data } = await axios.post(
+      `${config.CHAMS_MOBILE_BASEURL}/verify-phone`,
+      { phoneNumber: phone_number, tokenVerified: true },
+      {
+        headers: {
+          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
+        }
+      }
+    )
+    if (data.message.includes('was successfully verified')) {
+      const { data } = await axios.post(
+        `${config.CHAMS_MOBILE_BASEURL}/user`,
+        {
+          email,
+          phone_number,
+          gender,
+          first_name,
+          last_name,
+          middle_name,
+          date_of_birth,
+          address,
+          place_of_birth,
+          state_of_residence,
+          savings_product_id: '2',
+          base64Image:
+            'base64 string of the user passport image - containing his/her face'
+        },
+        {
+          headers: {
+            Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
+          }
+        }
+      )
+      const response = data as KegowUserInterface
+      const hashedPassword = await bcrypt.hash(password, 10)
+      const createdUser = await prisma.users.create({
+        data: {
+          email,
+          first_name,
+          last_name,
+          middle_name,
+          date_of_birth: new Date(date_of_birth).toISOString(),
+          address,
+          place_of_birth,
+          password: hashedPassword,
+          phone: phone_number,
+          state_of_Residence: state_of_residence,
+          photo_url: response.photo_url
+        }
+      })
       await prisma.wallet.create({
-        data: { code: generateRandomNewNumber(), user_id: createdUser.id }
+        data: {
+          wallet_id: response.wallets[0].account_no,
+          user_id: createdUser.id,
+          name: response.wallets[0].name,
+          balance: Number(response.wallets[0].balance).toFixed(2)
+        }
       })
       const token = generateToken({
         id: createdUser.id,
         email: createdUser.email,
         role: createdUser.role
       })
-      const newUser = await prisma.users.findUnique({
+      const checkUser = await prisma.users.findUnique({
         where: { id: createdUser.id },
         include: { wallet: true }
       })
-      return res.status(HTTP_STATUS_CODE.CREATED).json({
-        message: 'user created',
-        success: true,
-        user: { newUser },
-        token
-      })
-    } else {
-      await prisma.wallet.create({
-        data: { code: walletCode, user_id: createdUser.id }
-      })
-      const token = generateToken({
-        id: createdUser.id,
-        email: createdUser.email,
-        role: createdUser.role
-      })
-      const newUser = await prisma.users.findUnique({
-        where: { id: createdUser.id },
-        include: { wallet: true }
-      })
-      return res.status(HTTP_STATUS_CODE.CREATED).json({
-        message: 'user created',
-        success: true,
-        user: { newUser },
+      return res.status(201).json({
+        message: 'user created successfully',
+        status: true,
+        user: { checkUser },
         token
       })
     }
+    return res.status(400).json({ message: 'an error occured', success: false })
   } catch (error) {
+    // logger.info(error)
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
           success: false
         })
       }
@@ -140,12 +198,40 @@ export const createUser = async (req: Request, res: Response) => {
         .status(HTTP_STATUS_CODE.BAD_REQUEST)
         .json({ error, success: false })
     }
-    logger.info(error)
-    return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-      error,
-      message: 'an error occured on creating a user',
-      success: false
-    })
+    const err = error as AxiosError
+    if (err) {
+      logger.info('Err')
+      logger.error(err.response?.data)
+      return res.status(400).json({ message: err.response?.data })
+    }
+    logger.info('Error')
+    return res.status(400).json({ error })
+  }
+}
+
+export const getUsersFromKegow = async (req: Request, res: Response) => {
+  try {
+    const { data } = await axios.get(
+      'https://kegow-broker-dev-soidnv4kmq-ew.a.run.app/api/kegow-merchants/users',
+      {
+        headers: {
+          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
+        }
+      }
+    )
+
+    return res
+      .status(200)
+      .json({ message: 'users gotten', success: true, data })
+  } catch (error) {
+    const err = error as AxiosError
+    if (err) {
+      logger.info('Err')
+      logger.error(err.response?.data)
+      return res.status(400).json({ message: err.response?.data })
+    }
+    logger.info('Error')
+    return res.status(400).json({ error })
   }
 }
 
@@ -178,12 +264,10 @@ export const getUser = async (req: Request, res: Response) => {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
           success: false
         })
       }
@@ -201,82 +285,80 @@ export const getUser = async (req: Request, res: Response) => {
   }
 }
 
-export const editUserInfo = async (req: Request, res: Response) => {
-  const { email, password, fullName, phone } = req.body
-  const { id } = req.params
+// export const editUserInfo = async (req: Request, res: Response) => {
+//   const { email, password, fullName, phone } = req.body
+//   const { id } = req.params
 
-  try {
-    if (req.user != null) {
-      if (Number(id) !== Number(req.user.id)) {
-        return res
-          .status(400)
-          .json({ message: 'invalid request', success: false })
-      }
-      const findUser = await prisma.users.findUnique({
-        where: { id: Number(id) }
-      })
+//   try {
+//     if (req.user != null) {
+//       if (Number(id) !== Number(req.user.id)) {
+//         return res
+//           .status(400)
+//           .json({ message: 'invalid request', success: false })
+//       }
+//       const findUser = await prisma.users.findUnique({
+//         where: { id: Number(id) }
+//       })
 
-      if (findUser == null) {
-        return res
-          .status(HTTP_STATUS_CODE.BAD_REQUEST)
-          .json({ message: 'user does exist', succes: false })
-      }
+//       if (findUser == null) {
+//         return res
+//           .status(HTTP_STATUS_CODE.BAD_REQUEST)
+//           .json({ message: 'user does exist', succes: false })
+//       }
 
-      if (password) {
-        const hashedPassword = await bcrypt.hash(password, 10)
-        const updatedUser = await prisma.users.update({
-          where: { id: Number(id) },
-          data: {
-            email,
-            password: hashedPassword,
-            fullName,
-            phone
-          }
-        })
-        return res.status(HTTP_STATUS_CODE.ACCEPTED).json({
-          message: 'user updated',
-          success: true,
-          user: { updatedUser }
-        })
-      }
-      const updatedUser = await prisma.users.update({
-        where: { id: Number(id) },
-        data: { email, fullName, phone }
-      })
-      return res.status(HTTP_STATUS_CODE.ACCEPTED).json({
-        message: 'user updated',
-        success: true,
-        user: { updatedUser }
-      })
-    }
-    return res.status(400).json({ message: 'user not authenticated' })
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // The .code property can be accessed in a type-safe manner
-      logger.info(error)
-      if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
-        return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-          message:
-            'There is a unique constraint violation, a new user cannot be created with this email',
-          success: false
-        })
-      }
-      logger.info(error)
-      return res
-        .status(HTTP_STATUS_CODE.BAD_REQUEST)
-        .json({ error, success: false })
-    }
-    logger.info(error)
-    return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-      error,
-      message: 'an error occured on creating a user',
-      success: false
-    })
-  }
-}
+//       if (password) {
+//         const hashedPassword = await bcrypt.hash(password, 10)
+//         const updatedUser = await prisma.users.update({
+//           where: { id: Number(id) },
+//           data: {
+//             email,
+//             password: hashedPassword,
+//             fullName,
+//             phone
+//           }
+//         })
+//         return res.status(HTTP_STATUS_CODE.ACCEPTED).json({
+//           message: 'user updated',
+//           success: true,
+//           user: { updatedUser }
+//         })
+//       }
+//       const updatedUser = await prisma.users.update({
+//         where: { id: Number(id) },
+//         data: { email, fullName, phone }
+//       })
+//       return res.status(HTTP_STATUS_CODE.ACCEPTED).json({
+//         message: 'user updated',
+//         success: true,
+//         user: { updatedUser }
+//       })
+//     }
+//     return res.status(400).json({ message: 'user not authenticated' })
+//   } catch (error) {
+//     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+//       // The .code property can be accessed in a type-safe manner
+//       logger.info(error)
+//       if (error.code === 'P2002') {
+//         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//           message:
+//             'There is a unique constraint violation, a new user cannot be created with this email',
+//           err: error.message,
+//           success: false
+//         })
+//       }
+//       logger.info(error)
+//       return res
+//         .status(HTTP_STATUS_CODE.BAD_REQUEST)
+//         .json({ error, success: false })
+//     }
+//     logger.info(error)
+//     return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//       error,
+//       message: 'an error occured on creating a user',
+//       success: false
+//     })
+//   }
+// }
 
 export const signIn = async (req: Request, res: Response) => {
   const { username, password } = req.body
@@ -304,25 +386,21 @@ export const signIn = async (req: Request, res: Response) => {
       email: findUser.email,
       role: findUser.role
     })
-    return res
-      .status(200)
-      .json({
-        message: 'successfully logged in',
-        success: true,
-        user: { findUser },
-        token
-      })
+    return res.status(200).json({
+      message: 'successfully logged in',
+      success: true,
+      user: { findUser },
+      token
+    })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
           success: false
         })
       }
@@ -361,12 +439,10 @@ export const deleteUser = async (req: Request, res: Response) => {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)
       if (error.code === 'P2002') {
-        logger.info(
-          'There is a unique constraint violation, a new user cannot be created with this email'
-        )
         return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
           message:
             'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
           success: false
         })
       }
@@ -381,5 +457,59 @@ export const deleteUser = async (req: Request, res: Response) => {
       message: 'an error occured on creating a user',
       success: false
     })
+  }
+}
+
+export const confirmWalletNumber = async (req: Request, res: Response) => {
+  const { walletId } = req.body
+
+  try {
+    const { data } = await axios.get(
+      `${config.CHAMS_MOBILE_BASEURL}/transfer/verify-wallet/${walletId}`,
+      {
+        headers: {
+          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
+        }
+      }
+    )
+    return res
+      .status(200)
+      .json({ message: 'wallet validated', success: true, data })
+  } catch (error) {
+    const err = error as AxiosError
+    if (err) {
+      logger.info('Err')
+      logger.error(err.response?.data)
+      return res.status(400).json({ message: err.response?.data })
+    }
+    logger.info('Error')
+    return res.status(400).json({ error })
+  }
+}
+
+export const getUserByPhone = async (req: Request, res: Response) => {
+  const { phone } = req.params
+
+  try {
+    const { data } = await axios.get(
+      `${config.CHAMS_MOBILE_BASEURL}/user/${phone}`,
+      {
+        headers: {
+          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
+        }
+      }
+    )
+    return res
+      .status(200)
+      .json({ message: 'wallet validated', success: true, data })
+  } catch (error) {
+    const err = error as AxiosError
+    if (err) {
+      logger.info('Err')
+      logger.error(err.response?.data)
+      return res.status(400).json({ message: err.response?.data })
+    }
+    logger.info('Error')
+    return res.status(400).json({ error })
   }
 }

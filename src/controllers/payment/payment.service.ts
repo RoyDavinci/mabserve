@@ -11,5 +11,6 @@ paymentRouter.post(
   authenticateJWT,
   controllers.initiatePaymentToBank
 )
+paymentRouter.post('/airbank', authenticateJWT, controllers.transferToAirbank)
 
 export default paymentRouter
