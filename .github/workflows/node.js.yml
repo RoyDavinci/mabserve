@@ -26,5 +26,5 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm i --legacy-peer-deps
-      - run: pm2 kill
-      - run: pm2 start
+      - run: sudo pm2 kill
+      - run: sudo pm2 start
