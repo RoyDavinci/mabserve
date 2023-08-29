@@ -6,6 +6,7 @@ import { PassportService } from './common/passport'
 import authRouter from './routes/routes'
 import sessionInstance from './common/session'
 import logger from './common/logger'
+import checkHealth from './controllers/health/health'
 
 dotenv.config()
 
@@ -19,9 +20,7 @@ app.use(sessionInstance)
 PassportService(passport)
 app.use(passport.initialize())
 app.use(passport.session())
-app.get('/', (req: Request, res: Response) =>
-  res.status(200).json({ message: 'welcome' })
-)
+app.get('/', checkHealth)
 app.use('/api', authRouter)
 
 app.listen(port, () => {

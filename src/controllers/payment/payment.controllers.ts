@@ -158,7 +158,7 @@ export const kegowBankPayment = async (req: Request, res: Response) => {
           'TYPE',
           req.user.id
         )
-        const checkSystemUser = await systemUser.debit()
+        const checkSystemUser = await systemUser.credit()
         if (checkSystemUser.status) {
           return res.status(400).json({ message: 'an error occured' })
         }
