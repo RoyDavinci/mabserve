@@ -11,6 +11,11 @@ paymentRouter.post(
   authenticateJWT,
   controllers.initiatePaymentToBank
 )
+paymentRouter.post(
+  '/kegowPayment',
+  authenticateJWT,
+  controllers.kegowBankPayment
+)
 paymentRouter.post('/airbank', authenticateJWT, controllers.transferToAirbank)
 
 export default paymentRouter

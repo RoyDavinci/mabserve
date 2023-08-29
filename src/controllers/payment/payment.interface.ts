@@ -63,3 +63,50 @@ export type FlutterWaveTransferIntegration = {
     bank_name: string
   }
 }
+
+export type KeGowTransfer = {
+  message: string
+  transfer: {
+    tx_ref: string
+    transfer_amount: string
+    sender_wallet_number: number
+    receiver_wallet_number: number
+    narration: string
+    beneficiary_account_name: string
+    originator_account_name: string
+    beneficiary_account_number: number
+    originator_account_number: number
+    resquest_id: null
+  }
+}
+
+export type VerifyAccountNumber = {
+  account: {
+    bankVerificationNumber: string
+    beneficiaryAccountName: string
+    beneficiaryAccountNumber: string
+    beneficiaryBankCode: string
+    beneficiaryNameEnquiryRefrenceNumber: string
+    kyclevel: ''
+    responseCode: string
+    responseMessage: string
+    sessionID: string
+  }
+}
+
+export type KeGowPaymentResponse = {
+  message: string
+  data: {
+    beneficiaryAccountName: string
+    beneficiaryAccountNumber: string
+    beneficiaryBankCode: string
+    narration: string
+    amount: number
+    beneficiaryNameEnquiryRefrenceNumber: string
+    bankVerificationNumber: string
+    beneficiaryKYCLevel: ''
+    wallet_account_number: string
+    channelCode: number
+    merchant_id: string
+  }
+}

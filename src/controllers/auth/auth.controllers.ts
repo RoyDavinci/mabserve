@@ -15,11 +15,9 @@ import generateToken from '../../common/generateToken'
 import axios, { type AxiosError } from 'axios'
 import config from '../../config'
 import {
-  GottenUser,
-  USerByPhone,
-  type KegowUserInterface,
-  ErrorPhone
-} from './auth.interfaces'
+  generateRandomNewNumber,
+  generateRandomNumber
+} from '../../common/generateRandomNumberr'
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -100,67 +98,37 @@ export const createUser = async (req: Request, res: Response) => {
     place_of_birth,
     password,
     phone_number,
-    state_of_residence,
-    gender
+    state_of_residence
   } = req.body
 
   try {
-    const { data } = await axios.post(
-      `${config.CHAMS_MOBILE_BASEURL}/verify-phone`,
-      { phoneNumber: phone_number, tokenVerified: true },
-      {
-        headers: {
-          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
-        }
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const createdUser = await prisma.users.create({
+      data: {
+        email,
+        first_name,
+        last_name,
+        middle_name,
+        date_of_birth: new Date(date_of_birth).toISOString(),
+        address,
+        place_of_birth,
+        password: hashedPassword,
+        phone: phone_number,
+        state_of_Residence: state_of_residence,
+        photo_url: ''
       }
-    )
-    if (data.message.includes('was successfully verified')) {
-      const { data } = await axios.post(
-        `${config.CHAMS_MOBILE_BASEURL}/user`,
-        {
-          email,
-          phone_number,
-          gender,
-          first_name,
-          last_name,
-          middle_name,
-          date_of_birth,
-          address,
-          place_of_birth,
-          state_of_residence,
-          savings_product_id: '2',
-          base64Image:
-            'base64 string of the user passport image - containing his/her face'
-        },
-        {
-          headers: {
-            Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
-          }
-        }
-      )
-      const response = data as KegowUserInterface
-      const hashedPassword = await bcrypt.hash(password, 10)
-      const createdUser = await prisma.users.create({
-        data: {
-          email,
-          first_name,
-          last_name,
-          middle_name,
-          date_of_birth: new Date(date_of_birth).toISOString(),
-          address,
-          place_of_birth,
-          password: hashedPassword,
-          phone: phone_number,
-          state_of_Residence: state_of_residence,
-          photo_url: response.photo_url
-        }
-      })
+    })
+    const walletId = generateRandomNumber()
+    const findWallet = await prisma.wallet.findFirst({
+      where: { wallet_id: walletId.toString() }
+    })
+
+    if (!findWallet) {
       await prisma.wallet.create({
         data: {
-          wallet_id: response.wallets[0].account_no,
+          wallet_id: walletId,
           user_id: createdUser.id,
-          name: response.wallets[0].name,
-          balance: Number(response.wallets[0].balance).toFixed(2)
+          name: 'AirBank'
         }
       })
       const token = generateToken({
@@ -179,9 +147,30 @@ export const createUser = async (req: Request, res: Response) => {
         token
       })
     }
-    return res.status(400).json({ message: 'an error occured', success: false })
+    const newWalletId = generateRandomNewNumber()
+    await prisma.wallet.create({
+      data: {
+        wallet_id: newWalletId,
+        user_id: createdUser.id,
+        name: 'AirBank'
+      }
+    })
+    const token = generateToken({
+      id: createdUser.id,
+      email: createdUser.email,
+      role: createdUser.role
+    })
+    const checkUser = await prisma.users.findUnique({
+      where: { id: createdUser.id },
+      include: { wallet: true }
+    })
+    return res.status(201).json({
+      message: 'user created successfully',
+      status: true,
+      user: { checkUser },
+      token
+    })
   } catch (error) {
-    // logger.info(error)
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
       logger.info(error)

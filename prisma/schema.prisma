@@ -25,11 +25,15 @@ model Users {
   date_of_birth      DateTime?
   first_name         String         @db.VarChar(100)
   last_name          String         @db.VarChar(100)
-  middle_name        String         @db.VarChar(100)
-  place_of_birth     String         @db.VarChar(100)
-  state_of_Residence String         @db.VarChar(100)
+  middle_name        String?        @db.VarChar(100)
+  place_of_birth     String?        @db.VarChar(100)
+  state_of_Residence String?        @db.VarChar(100)
   phone_verified     Boolean        @default(false)
+  email_verified_at  Boolean        @default(false)
   photo_url          String         @db.Text
+  whitelistip        Boolean        @default(false)
+  commission         Commission     @default(null)
+  level              Level          @default(agent)
   transaction        transactions[]
   wallet             wallet?
 
@@ -113,4 +117,15 @@ enum Status {
   Pending
   Failed
   Successful
+}
+
+enum Commission {
+  percentage
+  static
+  null
+}
+
+enum Level {
+  agent
+  null
 }
