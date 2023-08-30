@@ -25,8 +25,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "compile": "tsc",
-    "kill:pm2": "pm2 kill",
-    "start:pm2": "pm2 start ./dist/index.js"
+    "kill:pm2": "pm2 kill"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
