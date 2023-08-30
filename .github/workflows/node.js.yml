@@ -30,3 +30,4 @@ jobs:
       - run: npm run compile
       - run: npm run kill:pm2
       - run: npm run start:pm2
+      - run: echo "done"
