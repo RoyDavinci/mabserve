@@ -110,3 +110,19 @@ export type KeGowPaymentResponse = {
     merchant_id: string
   }
 }
+
+export type FlutterWaveCharge = {
+  status: string
+  message: string
+  meta: {
+    authorization: {
+      transfer_reference: string
+      transfer_account: string
+      transfer_bank: string
+      account_expiration: string
+      transfer_note: string
+      transfer_amount: number
+      mode: string
+    }
+  }
+}

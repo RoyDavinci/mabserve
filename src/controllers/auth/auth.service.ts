@@ -20,6 +20,11 @@ authRouter.post(
 authRouter.patch('/pin', authenticateJWT, controllers.createPin)
 authRouter.post('/login', authenticateLocal, controllers.signIn)
 authRouter.delete('/delete-user/:id', authenticateJWT, controllers.deleteUser)
-// authRouter.patch('/update-user/:id', authenticateJWT, controllers.editUserInfo)
+authRouter.patch('/change-pin/', authenticateJWT, controllers.changePin)
+authRouter.patch(
+  '/change-password/',
+  authenticateJWT,
+  controllers.changePassword
+)
 
 export default authRouter

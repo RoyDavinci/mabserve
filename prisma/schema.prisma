@@ -9,33 +9,28 @@ datasource db {
 }
 
 model Users {
-  id                 Int            @id @default(autoincrement())
-  email              String         @unique
-  password           String         @db.VarChar(200)
-  created_at         DateTime       @default(now())
-  updated_at         DateTime?
-  login_at           DateTime?
-  role               Users_role     @default(User)
-  emailVerified      Boolean        @default(false)
-  otp                String?
-  accountStatus      Int            @default(1234567890)
-  phone              String         @unique @db.VarChar(100)
-  pin                Int?
-  address            String         @db.VarChar(100)
-  date_of_birth      DateTime?
-  first_name         String         @db.VarChar(100)
-  last_name          String         @db.VarChar(100)
-  middle_name        String?        @db.VarChar(100)
-  place_of_birth     String?        @db.VarChar(100)
-  state_of_Residence String?        @db.VarChar(100)
-  phone_verified     Boolean        @default(false)
-  email_verified_at  Boolean        @default(false)
-  photo_url          String         @db.Text
-  whitelistip        Boolean        @default(false)
-  commission         Commission     @default(null)
-  level              Level          @default(agent)
-  transaction        transactions[]
-  wallet             wallet?
+  id                Int            @id @default(autoincrement())
+  email             String         @unique
+  password          String         @db.VarChar(200)
+  created_at        DateTime       @default(now())
+  updated_at        DateTime?
+  login_at          DateTime?
+  role              Users_role     @default(User)
+  emailVerified     Boolean        @default(false)
+  otp               String?
+  accountStatus     Int            @default(1234567890)
+  phone             String         @unique @db.VarChar(100)
+  pin               Int?
+  fullName          String         @db.VarChar(100)
+  phone_verified    Boolean        @default(false)
+  email_verified_at Boolean        @default(false)
+  photo_url         String?        @db.Text
+  whitelistip       Boolean        @default(false)
+  commission        Commission     @default(null)
+  pin_auth          Boolean        @default(false)
+  level             Level          @default(agent)
+  transaction       transactions[]
+  wallet            wallet?
 
   @@index([id])
   @@index([email], map: "unique_email_idx")

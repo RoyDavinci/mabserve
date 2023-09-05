@@ -1,5 +1,7 @@
+#!/usr/bin/env node
+
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-import express, { type Request, type Response } from 'express'
+import express from 'express'
 import dotenv from 'dotenv'
 import passport from 'passport'
 import { PassportService } from './common/passport'
@@ -20,8 +22,8 @@ app.use(sessionInstance)
 PassportService(passport)
 app.use(passport.initialize())
 app.use(passport.session())
-app.get('/', checkHealth)
-app.use('/api', authRouter)
+app.get('/api', checkHealth)
+app.use('/api/v1', authRouter)
 
 app.listen(port, () => {
   logger.info(`⚡️[server]: Server is running at http://localhost:${port}`)

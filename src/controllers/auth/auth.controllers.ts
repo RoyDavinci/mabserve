@@ -4,8 +4,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
-import bcrypt from 'bcryptjs'
 /* eslint-disable camelcase */
+import bcrypt from 'bcryptjs'
 import { type Request, type Response } from 'express'
 import { Prisma } from '@prisma/client'
 import prisma from '../../db/prisma'
@@ -58,7 +58,7 @@ export const createPin = async (req: Request, res: Response) => {
     if (!req.user) return res.status(400).json({ message: 'not authenticated' })
     const updated = await prisma.users.update({
       where: { email: req.user.email },
-      data: { pin: Number(pin) }
+      data: { pin: Number(pin), pin_auth: true }
     })
     return res.status(200).json({ message: 'user updated', updated })
   } catch (error) {
@@ -88,34 +88,16 @@ export const confirmKegowUser = async (req: Request, res: Response) => {
 }
 
 export const createUser = async (req: Request, res: Response) => {
-  const {
-    email,
-    first_name,
-    last_name,
-    middle_name,
-    date_of_birth,
-    address,
-    place_of_birth,
-    password,
-    phone_number,
-    state_of_residence
-  } = req.body
+  const { email, fullName, password, phone_number } = req.body
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10)
     const createdUser = await prisma.users.create({
       data: {
         email,
-        first_name,
-        last_name,
-        middle_name,
-        date_of_birth: new Date(date_of_birth).toISOString(),
-        address,
-        place_of_birth,
+        fullName,
         password: hashedPassword,
-        phone: phone_number,
-        state_of_Residence: state_of_residence,
-        photo_url: ''
+        phone: phone_number
       }
     })
     const walletId = generateRandomNumber()
@@ -128,7 +110,8 @@ export const createUser = async (req: Request, res: Response) => {
         data: {
           wallet_id: walletId,
           user_id: createdUser.id,
-          name: 'AirBank'
+          name: 'AirBank',
+          balance: Number(100000).toFixed(2)
         }
       })
       const token = generateToken({
@@ -152,7 +135,8 @@ export const createUser = async (req: Request, res: Response) => {
       data: {
         wallet_id: newWalletId,
         user_id: createdUser.id,
-        name: 'AirBank'
+        name: 'AirBank',
+        balance: Number(100000).toFixed(2)
       }
     })
     const token = generateToken({
@@ -187,13 +171,8 @@ export const createUser = async (req: Request, res: Response) => {
         .status(HTTP_STATUS_CODE.BAD_REQUEST)
         .json({ error, success: false })
     }
-    const err = error as AxiosError
-    if (err) {
-      logger.info('Err')
-      logger.error(err.response?.data)
-      return res.status(400).json({ message: err.response?.data })
-    }
     logger.info('Error')
+    logger.info(error)
     return res.status(400).json({ error })
   }
 }
@@ -499,6 +478,111 @@ export const getUserByPhone = async (req: Request, res: Response) => {
       return res.status(400).json({ message: err.response?.data })
     }
     logger.info('Error')
+    return res.status(400).json({ error })
+  }
+}
+
+export const changePin = async (req: Request, res: Response) => {
+  const { pin, newPin } = req.body
+
+  try {
+    if (!req.user) {
+      return res
+        .status(400)
+        .json({ message: 'User not Authenticated', success: false })
+    }
+
+    const findUser = await prisma.users.findUnique({
+      where: { id: req.user.id }
+    })
+
+    if (!findUser)
+      return res.status(400).json({ message: 'User Not Found', success: false })
+    logger.info(JSON.stringify({ check: findUser.pin, pin }))
+    if (findUser.pin === Number(pin)) {
+      const updatePin = await prisma.users.update({
+        where: { id: req.user.id },
+        data: { pin: Number(newPin) }
+      })
+
+      return res
+        .status(200)
+        .json({ updatePin, message: 'Pin Updated', success: true })
+    } else {
+      return res
+        .status(400)
+        .json({ message: 'Incorrect Pin Submitted', success: false })
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // The .code property can be accessed in a type-safe manner
+      logger.info(error)
+      if (error.code === 'P2002') {
+        return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+          message:
+            'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
+          success: false
+        })
+      }
+      logger.info(error)
+      return res
+        .status(HTTP_STATUS_CODE.BAD_REQUEST)
+        .json({ error, success: false })
+    }
+    logger.info('Error')
+    logger.info(error)
+    return res.status(400).json({ error })
+  }
+}
+
+export const changePassword = async (req: Request, res: Response) => {
+  const { password, confirmPassword, newPassword } = req.body
+
+  try {
+    if (!req.user) {
+      return res
+        .status(400)
+        .json({ message: 'User not authenticated', success: false })
+    }
+    logger.info(JSON.stringify({ password, newPassword, confirmPassword }))
+    const compare = await bcrypt.compare(password, req.user.password)
+    logger.info(compare)
+    if (!compare)
+      return res
+        .status(400)
+        .json({ message: 'Incorrect Old Password', success: false })
+    if (confirmPassword !== newPassword)
+      return res
+        .status(400)
+        .json({ message: 'Passwords do not Match', success: false })
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    await prisma.users.update({
+      where: { id: req.user.id },
+      data: { password: hashedPassword }
+    })
+    return res
+      .status(200)
+      .json({ message: 'Password Changed Successfully', success: true })
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // The .code property can be accessed in a type-safe manner
+      logger.info(error)
+      if (error.code === 'P2002') {
+        return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+          message:
+            'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
+          success: false
+        })
+      }
+      logger.info(error)
+      return res
+        .status(HTTP_STATUS_CODE.BAD_REQUEST)
+        .json({ error, success: false })
+    }
+    logger.info('Error')
+    logger.info(error)
     return res.status(400).json({ error })
   }
 }

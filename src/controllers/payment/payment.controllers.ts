@@ -1,21 +1,24 @@
+/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 /* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-import axios, { AxiosError } from 'axios'
+import axios, { type AxiosError } from 'axios'
 import { type Request, type Response } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import config from '../../config'
 import logger from '../../common/logger'
 import {
-  KeGowPaymentResponse,
+  type KeGowPaymentResponse,
   type FlutterWaveTransferIntegration,
-  type VerifyAccountNumber
+  type VerifyAccountNumber,
+  type FlutterWaveCharge
 } from './payment.interface'
 import prisma from '../../db/prisma'
 import { Prisma } from '@prisma/client'
 import HTTP_STATUS_CODE from '../../constants/httpCode'
 import { WalletController } from '../../utils/Wallet'
+import { User } from '../../utils/User'
 
 export const getBanks = async (req: Request, res: Response) => {
   try {
@@ -224,7 +227,7 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
         prisma.transactions.create({
           data: {
             email,
-            name: req.user.first_name,
+            name: req.user.fullName,
             amount,
             reference: response.data.reference,
             user_id: req.user.id,
@@ -260,7 +263,7 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
 }
 
 export const transferToAirbank = async (req: Request, res: Response) => {
-  const { wallet, amount, narration } = req.body
+  const { wallet, amount, narration, pin } = req.body
 
   if (req.user == null)
     return res
@@ -277,9 +280,21 @@ export const transferToAirbank = async (req: Request, res: Response) => {
     include: { Users: true }
   })
   if (fetchUser == null)
-    return res.status(400).json({ message: 'an error occured', success: false })
+    return res
+      .status(400)
+      .json({ message: 'User Verification not successful', success: false })
   try {
-    if (Number(amount) > Number(fetchUser.balance))
+    if (!req.user.pin_auth) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'please activate transaction pin' })
+    }
+    const checkPin = new User(req.user.id)
+    const pinCheck = await checkPin.checkPin(pin)
+    if (!pinCheck.success) {
+      return res.status(400).json({ success: false, message: pinCheck.message })
+    }
+    if (Number(amount) > Number(findUser.wallet?.balance))
       return res.status(400).json({
         message: 'insufficient balance to complete transaction',
         success: false
@@ -336,9 +351,11 @@ export const transferToAirbank = async (req: Request, res: Response) => {
         success: false
       })
     }
-    return res
-      .status(200)
-      .json({ message: 'user credited successfully', success: true })
+    return res.status(200).json({
+      message: 'user credited successfully',
+      success: true,
+      balance: findUser.wallet?.balance
+    })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // The .code property can be accessed in a type-safe manner
@@ -355,41 +372,6 @@ export const transferToAirbank = async (req: Request, res: Response) => {
       return res
         .status(HTTP_STATUS_CODE.BAD_REQUEST)
         .json({ error, success: false })
-    } else if (error instanceof AxiosError) {
-      const err = error as AxiosError
-      if (err !== null) {
-        await prisma.$transaction([
-          prisma.transactions.create({
-            data: {
-              operator_name: 'Kegow',
-              email: req.user.email,
-              operator_unique_id: `debit-${uuidv4()}`,
-              amount,
-              reference: uuidv4(),
-              user_id: req.user.id,
-              payload: req.body,
-              response: JSON.stringify(err.response?.data),
-              status: 'Failed'
-            }
-          }),
-          prisma.transactions.create({
-            data: {
-              operator_name: 'Kegow',
-              email: fetchUser.Users.email,
-              operator_unique_id: `credit-${uuidv4()}`,
-              amount,
-              reference: uuidv4(),
-              user_id: fetchUser.Users.id,
-              payload: req.body,
-              response: JSON.stringify(err.response?.data),
-              status: 'Failed'
-            }
-          })
-        ])
-        logger.info('Err')
-        logger.error(err.response?.data)
-        return res.status(400).json({ message: err.response?.data, issue: err })
-      }
     }
     logger.error(error)
     return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
@@ -397,5 +379,57 @@ export const transferToAirbank = async (req: Request, res: Response) => {
       message: 'an error occured on crediting a wallet',
       success: false
     })
+  }
+}
+
+export const fundWallet = async (req: Request, res: Response) => {
+  const { amount, email } = req.body
+
+  if (req.user == null) {
+    return res
+      .status(400)
+      .json({ message: 'UnAuthorized transaction', success: false })
+  }
+  try {
+    const transRef = uuidv4()
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/charges?type=bank_transfer',
+      { amount, email, currency: 'NGN', tx_ref: transRef },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    logger.info(data)
+    const response = data as FlutterWaveCharge
+    if (response.status === 'success') {
+      await prisma.transactions.create({
+        data: {
+          user_id: req.user.id,
+          email,
+          operator_name: 'FlutterWave',
+          operator_unique_id: transRef,
+          amount,
+          reference: transRef,
+          payload: req.body,
+          reason: 'CREDIT ACCOUNT',
+          name: req.user.fullName
+        }
+      })
+    }
+    return res.status(200).json({ data })
+  } catch (error) {
+    const err = error as AxiosError
+
+    if (err) {
+      logger.info(err.response?.data)
+      return res.status(400).json({ err })
+    }
+    return res.status(400).json({ error })
+  }
+}
+
+export const fundUserWallet = async (req: Request, res: Response) => {
+  try {
+    logger.info(req)
+  } catch (error) {
+    logger.info(error)
   }
 }
