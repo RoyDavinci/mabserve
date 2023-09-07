@@ -1,5 +1,5 @@
 /* eslint-disable eqeqeq */
-import logger from '../common/logger'
+// import logger from '../common/logger'
 import prisma from '../db/prisma'
 
 export class User {
@@ -18,8 +18,6 @@ export class User {
     if (getUser == null) {
       return { status: '400', success: false, message: 'user not found' }
     }
-    logger.info(getUser.pin)
-    logger.info(pin)
     if (getUser.pin != pin) {
       return { status: '400', success: false, message: 'incorrect pin' }
     }
