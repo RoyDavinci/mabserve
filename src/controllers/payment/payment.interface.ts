@@ -126,3 +126,47 @@ export type FlutterWaveCharge = {
     }
   }
 }
+
+export type flutterWaveCardErrorRespnse = {
+  status: string
+  message: string
+  data: null
+  level: string
+}
+
+export type FlutterWavePaymentBankCharge = {
+  event: string
+  data: {
+    id: number
+    tx_ref: string
+    flw_ref: string
+    device_fingerprint: string
+    amount: number
+    currency: string
+    charged_amount: number
+    app_fee: number
+    merchant_fee: number
+    processor_response: string
+    auth_model: string
+    ip: string
+    narration: string
+    status: string
+    payment_type: string
+    created_at: string
+    account_id: string
+    customer: {
+      id: string
+      fullname: string
+      phone_number: null
+      email: string
+      created_at: string
+    }
+    meta: {
+      originatoraccountnumber: string
+      originatorname: string
+      bankname: string
+      originatoramount: string
+    }
+  }
+  'event.type': 'BANK_TRANSFER_TRANSACTION'
+}

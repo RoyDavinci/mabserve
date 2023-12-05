@@ -8,8 +8,10 @@ const authRouter = Router()
 
 authRouter.get('/', controllers.getAllUsers)
 authRouter.get('/kegowUsers', controllers.getUsersFromKegow)
+authRouter.get('/get-balance', authenticateJWT, controllers.getBalance)
 authRouter.get('/:phone', controllers.getUserByPhone)
 authRouter.get('/:id', authenticateJWT, controllers.getUser)
+
 authRouter.post('/walletId', controllers.confirmWalletNumber)
 authRouter.post(
   '/create',
@@ -25,6 +27,12 @@ authRouter.patch(
   '/change-password/',
   authenticateJWT,
   controllers.changePassword
+)
+authRouter.post(
+  '/bvn',
+  authenticateJWT,
+  middleware.validateBVn,
+  controllers.verifyBvn
 )
 
 export default authRouter

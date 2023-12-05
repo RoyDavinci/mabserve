@@ -183,3 +183,14 @@ export type ErrorPhone = {
     error: string
   }
 }
+
+export type Bvn = {
+  data: {
+    status: string
+    message: string
+    data: {
+      url: string
+      reference: string
+    }
+  }
+}

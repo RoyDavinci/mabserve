@@ -12,23 +12,21 @@ import {
   type KeGowPaymentResponse,
   type FlutterWaveTransferIntegration,
   type VerifyAccountNumber,
-  type FlutterWaveCharge
+  type FlutterWaveCharge,
+  type flutterWaveCardErrorRespnse
 } from './payment.interface'
 import prisma from '../../db/prisma'
 import { Prisma } from '@prisma/client'
 import HTTP_STATUS_CODE from '../../constants/httpCode'
 import { WalletController } from '../../utils/Wallet'
 import { User } from '../../utils/User'
+import { encrypt } from '../../utils/forge'
 
 export const getBanks = async (req: Request, res: Response) => {
   try {
     const { data } = await axios.get(
-      `${config.CHAMS_MOBILE_BASEURL}/transfer/fetch-banks`,
-      {
-        headers: {
-          Authorization: `Basic ${config.CHAMS_MOBILE_AUTH}`
-        }
-      }
+      `https://api.flutterwave.com/v3/banks/NG`,
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
     )
     return res.status(200).json({ data, success: true })
   } catch (error) {
@@ -201,6 +199,13 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
       },
       { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
     )
+    const checkUser = new User(req.user.id)
+    const checkedUser = await checkUser.checkDailyTransactions(Number(amount))
+    if (!checkedUser?.status) {
+      return res
+        .status(400)
+        .json({ message: checkedUser?.message, success: false })
+    }
     // logger.info(data)
     const fetchUser = await prisma.wallet.findUnique({
       where: { user_id: req.user.id }
@@ -239,6 +244,10 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
           }
         })
       ])
+      await prisma.users.update({
+        where: { id: req.user.id },
+        data: { dailyTransaction: Number(amount) }
+      })
       return res.status(200).json({
         message: 'successful',
         status: true,
@@ -413,8 +422,21 @@ export const fundWallet = async (req: Request, res: Response) => {
           name: req.user.fullName
         }
       })
+      await prisma.wallet.update({
+        where: { user_id: req.user.id },
+        data: { balance: { increment: Number(amount) } }
+      })
+
+      return res.status(200).json({
+        message: 'user account credited successfully',
+        bank: response.meta.authorization.transfer_bank,
+        account: response.meta.authorization.transfer_account,
+        status: true
+      })
     }
-    return res.status(200).json({ data })
+    return res
+      .status(400)
+      .json({ message: 'transfer not successful', status: false })
   } catch (error) {
     const err = error as AxiosError
 
@@ -426,10 +448,149 @@ export const fundWallet = async (req: Request, res: Response) => {
   }
 }
 
-export const fundUserWallet = async (req: Request, res: Response) => {
+export const fundWalletViaCard = async (req: Request, res: Response) => {
+  const { amount, card_number, cvv, expiry_month, expiry_year, email } =
+    req.body
+
+  if (!req.user) {
+    return res
+      .status(400)
+      .json({ message: 'please login again', status: false })
+  }
+  const transRef = uuidv4()
   try {
-    logger.info(req)
+    const client = encrypt(config.flutterWaveEncryption, {
+      amount,
+      email,
+      tx_ref: transRef,
+      card_number,
+      cvv,
+      expiry_month,
+      expiry_year,
+      currency: 'NGN'
+    })
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/charges?type=card',
+      { client },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    return res.status(200).json({ status: true, data })
   } catch (error) {
-    logger.info(error)
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err.response?.data)
+      return res.status(400).json({
+        err: err.response?.data,
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const verifyFlutterWavePayment = async (req: Request, res: Response) => {
+  const { id } = req.params
+
+  try {
+    const { data } = await axios.get(
+      `https://api.flutterwave.com/v3/transactions/${id}/verify`,
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+
+    return res.status(200).json({ data })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err.response?.data)
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const testBankTransfer = async (req: Request, res: Response) => {
+  const {
+    account_bank,
+    account_number,
+    amount,
+    email,
+    tx_ref,
+    currency,
+    phone_number,
+    fullname
+  } = req.body
+
+  try {
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/charges?type=debit_ng_account',
+      {
+        account_bank,
+        account_number,
+        amount,
+        email,
+        tx_ref,
+        currency,
+        phone_number,
+        fullname
+      },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    return res.status(200).json({ data })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err.response?.data)
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const testMomo = async (req: Request, res: Response) => {
+  try {
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/charges?type=debit_ng_account',
+      {
+        tx_ref: 'MC-1585230ew9v5050e8ddd',
+        amount: '100',
+        account_bank: '057',
+        account_number: '2114658919',
+        currency: 'NGN',
+        email: 'user@example.com',
+        phone_number: '0902620185',
+        fullname: 'Yolande Aglaé Colbert'
+      },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    return res.status(200).json({ message: 'gotten here', data })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err.response?.data)
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
   }
 }

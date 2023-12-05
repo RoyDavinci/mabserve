@@ -33,3 +33,18 @@ export const validateSignupData = [
 ]
 
 export const getUserValidation = []
+
+export const validateBVn = [
+  check('firstname')
+    .notEmpty()
+    .withMessage('firstname is required')
+    .bail()
+    .trim(),
+  check('lastname')
+    .notEmpty()
+    .withMessage('lastname is required')
+    .bail()
+    .trim(),
+  check('bvn').notEmpty().withMessage('bvn is required').bail().trim(),
+  validationErrorHandler
+]

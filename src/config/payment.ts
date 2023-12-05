@@ -7,7 +7,9 @@ dotenv.config()
 const envSchema = Joi.object({
   FLUTTERWAVE_PUBLICKEY: Joi.string().required(),
   FLUTTERWAVE_SECRETKEY: Joi.string().required(),
-  FLUTTERWAVE_ENCRYPTION: Joi.string().required()
+  FLUTTERWAVE_ENCRYPTION: Joi.string().required(),
+  RINGO_EMAIL: Joi.string().required(),
+  RINGO_PASSWORD: Joi.string().required()
 }).unknown()
 
 const { error, value: envVars } = envSchema.validate(process.env)
@@ -16,8 +18,10 @@ if (error != null) {
 }
 
 const paymentConfig = {
-    flutterwavePublicKey: envVars.FLUTTERWAVE_PUBLICKEY,
-    flutterwaveSecret: envVars.FLUTTERWAVE_SECRETKEY,
-    flutterWaveEncryption: envVars.FLUTTERWAVE_ENCRYPTION
+  flutterwavePublicKey: envVars.FLUTTERWAVE_PUBLICKEY,
+  flutterwaveSecret: envVars.FLUTTERWAVE_SECRETKEY,
+  flutterWaveEncryption: envVars.FLUTTERWAVE_ENCRYPTION,
+  ringoEmail: envVars.RINGO_EMAIL,
+  ringoPassword: envVars.RINGO_PASSWORD
 }
 export default paymentConfig

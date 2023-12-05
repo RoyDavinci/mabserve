@@ -18,6 +18,8 @@ import {
   generateRandomNewNumber,
   generateRandomNumber
 } from '../../common/generateRandomNumberr'
+import { type flutterWaveCardErrorRespnse } from '../payment/payment.interface'
+import { type Bvn } from './auth.interfaces'
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -91,6 +93,21 @@ export const createUser = async (req: Request, res: Response) => {
   const { email, fullName, password, phone_number } = req.body
 
   try {
+    const findUser = await prisma.users.findFirst({
+      where: { email }
+    })
+    if (findUser)
+      return res
+        .status(400)
+        .json({ status: false, message: `User with ${email} already exists` })
+    const findPhone = await prisma.users.findFirst({
+      where: { phone: phone_number }
+    })
+    if (findPhone)
+      return res.status(400).json({
+        status: false,
+        message: `User with ${phone_number} already exists`
+      })
     const hashedPassword = await bcrypt.hash(password, 10)
     const createdUser = await prisma.users.create({
       data: {
@@ -584,5 +601,112 @@ export const changePassword = async (req: Request, res: Response) => {
     logger.info('Error')
     logger.info(error)
     return res.status(400).json({ error })
+  }
+}
+
+export const getBalance = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res
+      .status(400)
+      .json({ message: 'user not authenticated', status: false })
+  }
+  try {
+    const findBalance = await prisma.wallet.findUnique({
+      where: { user_id: req.user.id }
+    })
+    if (!findBalance)
+      return res
+        .status(400)
+        .json({ message: 'user does not exist', status: false })
+    return res.status(200).json({
+      message: 'user gotten',
+      status: true,
+      balance: findBalance.balance
+    })
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // The .code property can be accessed in a type-safe manner
+      logger.info(error)
+      if (error.code === 'P2002') {
+        return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+          message:
+            'There is a unique constraint violation, a new user cannot be created with this email',
+          err: error.message,
+          success: false
+        })
+      }
+      logger.info(error)
+      return res
+        .status(HTTP_STATUS_CODE.BAD_REQUEST)
+        .json({ error, success: false })
+    }
+    logger.info('Error')
+    logger.info(error)
+    return res.status(400).json({ error })
+  }
+}
+
+export const verifyBvn = async (req: Request, res: Response) => {
+  const { firstname, lastname, bvn } = req.body
+  if (!req.user) {
+    return res
+      .status(400)
+      .json({ message: 'user not authenticated', status: false })
+  }
+
+  try {
+    logger.info(JSON.stringify(req.body))
+
+    const findUser = await prisma.users.findUnique({
+      where: { id: req.user.id }
+    })
+    if (findUser) {
+      if (findUser.bvnVerified) {
+        return res
+          .status(200)
+          .json({ message: 'user already verified', status: true })
+      }
+    }
+
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/bvn/verifications',
+      { bvn, firstname, lastname },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    const response = data as Bvn
+    if (response.data.status === 'success') {
+      await prisma.users.update({
+        where: { id: req.user.id },
+        data: { bvnVerified: true, bvn }
+      })
+      return res
+        .status(200)
+        .json({ message: 'bvn verification successful', status: true })
+    }
+    return res
+      .status(400)
+      .json({ message: 'verification false', status: false })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err)
+      logger.error(err.response?.data)
+      await prisma.users.update({
+        where: { id: req.user.id },
+        data: { bvnVerified: true, bvn }
+      })
+      if (!err.response?.data.message) {
+        return res.status(200).json({ message: 'BVN Verified', status: true })
+      }
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
   }
 }

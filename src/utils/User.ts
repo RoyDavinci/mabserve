@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 /* eslint-disable eqeqeq */
 // import logger from '../common/logger'
 import prisma from '../db/prisma'
@@ -22,5 +23,40 @@ export class User {
       return { status: '400', success: false, message: 'incorrect pin' }
     }
     return { success: true, message: 'authenticated' }
+  }
+
+  async checkDailyTransactions(amount: number) {
+    try {
+      const findUser = await prisma.wallet.findFirst({
+        where: { user_id: this.userId }
+      })
+      if (findUser === null) {
+        return { message: 'user not found', status: false }
+      }
+      const findUsers = await prisma.users.findUnique({
+        where: { id: this.userId }
+      })
+      if (findUsers == null) return { message: 'user not found', status: false }
+
+      if (!findUsers.bvnVerified) {
+        if (Number(amount) > 30000) {
+          return {
+            message:
+              'Please Verify Account to do more than 30,000 daily transaction',
+            status: false
+          }
+        }
+        if (Number(amount) + Number(findUsers.dailyTransaction) > 30000) {
+          return {
+            message:
+              'Please Verify Account to do more than 30,000 daily transaction',
+            status: false
+          }
+        }
+        return { message: 'continue', status: true }
+      }
+    } catch (error) {
+      return { status: false, message: 'an error occured', error }
+    }
   }
 }

@@ -9,63 +9,134 @@ datasource db {
 }
 
 model Users {
-  id                Int            @id @default(autoincrement())
-  email             String         @unique
-  password          String         @db.VarChar(200)
-  created_at        DateTime       @default(now())
-  updated_at        DateTime?
-  login_at          DateTime?
-  role              Users_role     @default(User)
-  emailVerified     Boolean        @default(false)
-  otp               String?
-  accountStatus     Int            @default(1234567890)
-  phone             String         @unique @db.VarChar(100)
-  pin               Int?
-  fullName          String         @db.VarChar(100)
-  phone_verified    Boolean        @default(false)
-  email_verified_at Boolean        @default(false)
-  photo_url         String?        @db.Text
-  whitelistip       Boolean        @default(false)
-  commission        Commission     @default(null)
-  pin_auth          Boolean        @default(false)
-  level             Level          @default(agent)
-  transaction       transactions[]
-  wallet            wallet?
+  id                  Int                    @id @default(autoincrement())
+  email               String                 @unique
+  password            String                 @db.VarChar(200)
+  created_at          DateTime               @default(now())
+  updated_at          DateTime?
+  login_at            DateTime?
+  role                Users_role             @default(User)
+  emailVerified       Boolean                @default(false)
+  otp                 String?
+  accountStatus       Int                    @default(1234567890)
+  phone               String                 @unique @db.VarChar(100)
+  pin                 Int?
+  fullName            String                 @db.VarChar(100)
+  bvnVerified         Boolean                @default(false)
+  bvn                 String?
+  dailyTransaction    Int                    @default(0)
+  phone_verified      Boolean                @default(false)
+  email_verified_at   Boolean                @default(false)
+  photo_url           String?                @db.Text
+  bvnVerifyString     String?
+  whitelistip         Boolean                @default(false)
+  commission          Commission             @default(null)
+  pin_auth            Boolean                @default(false)
+  level               Level                  @default(agent)
+  transaction         transactions[]
+  airtime_request     airtime_requests[]
+  electricity_request electricity_requests[]
+  wallet              wallet?
 
   @@index([id])
   @@index([email], map: "unique_email_idx")
 }
 
+model airtime_requests {
+  id         Int       @id @default(autoincrement())
+  network    String    @db.VarChar(20)
+  category   String?   @db.VarChar(50)
+  amount     Decimal   @db.Decimal(8, 2)
+  request_id String?   @unique @db.VarChar(80)
+  trans_code String    @unique @db.VarChar(80)
+  response   Json?
+  payload    Json?
+  phone      String    @db.VarChar(20)
+  user_id    Int
+  status     Status
+  Users      Users     @relation(fields: [user_id], references: [id])
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+}
+
+model data_requests {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  network      String?
+  amount       String?
+  request_id   String    @unique
+  external_ref String?
+  response     Json?
+  payload      Json?
+  trans_code   String    @unique
+  package      String?
+  bundle       String?
+  status       Status
+  phone        String
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  updated_at   DateTime? @db.Timestamp(0)
+}
+
 model wallet {
-  code           Int     @id @default(autoincrement())
-  wallet_id      String  @db.VarChar(40)
-  user_id        Int     @unique
-  balance_before Decimal @default(0.00) @db.Decimal(9, 2)
-  balance_after  Decimal @default(0.00) @db.Decimal(9, 2)
-  balance        Decimal @default(0.00) @db.Decimal(9, 2)
-  account_status String? @db.VarChar(20)
-  name           String? @db.VarChar(20)
-  Users          Users   @relation(fields: [user_id], references: [id])
+  code           Int       @id @default(autoincrement())
+  wallet_id      String    @db.VarChar(40)
+  user_id        Int       @unique
+  balance_before Decimal   @default(0.00) @db.Decimal(9, 2)
+  balance_after  Decimal   @default(0.00) @db.Decimal(9, 2)
+  balance        Decimal   @default(0.00) @db.Decimal(9, 2)
+  account_status String?   @db.VarChar(20)
+  name           String?   @db.VarChar(20)
+  Users          Users     @relation(fields: [user_id], references: [id])
+  created_at     DateTime? @default(now()) @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
 
   @@index([code])
   @@index([user_id], map: "unique_user_idx")
 }
 
+model electricity_requests {
+  id              Int       @id @default(autoincrement())
+  status          Status
+  amount          String
+  type            String
+  user_id         Int
+  unit            String?
+  token           String?
+  resetToken      String?
+  configureToken  String?
+  customerName    String?   @db.VarChar(200)
+  customerAddress String?   @db.VarChar(225)
+  debtPayment     String?
+  taxAmount       String?
+  arrearsApplied  String?
+  meterNumber     String
+  request_id      String    @unique
+  trans_code      String    @unique
+  payload         Json?
+  response        Json?
+  Users           Users     @relation(fields: [user_id], references: [id])
+  created_at      DateTime? @default(now()) @db.Timestamp(0)
+  updated_at      DateTime? @db.Timestamp(0)
+}
+
 model transactions {
-  transaction_id     Int     @id @default(autoincrement())
+  transaction_id     Int       @id @default(autoincrement())
   user_id            Int
   name               String?
   email              String
+  walletId           String?
   operator_name      String
-  operator_unique_id String? @unique
-  status             Status  @default(Pending)
-  amount             Decimal @db.Decimal(9, 2)
-  currency           String  @default("NGN")
+  operator_unique_id String?   @unique
+  status             Status    @default(Pending)
+  amount             Decimal   @db.Decimal(9, 2)
+  currency           String    @default("NGN")
   payload            Json?
   response           Json?
-  reference          String  @unique
+  reference          String    @unique
   reason             String?
-  Users              Users   @relation(fields: [user_id], references: [id])
+  Users              Users     @relation(fields: [user_id], references: [id])
+  created_at         DateTime? @default(now()) @db.Timestamp(0)
+  updated_at         DateTime? @db.Timestamp(0)
 
   @@index([user_id], map: "transactions_user_id_fkey")
 }
@@ -100,6 +171,17 @@ model directbundle_requests {
   created_at        DateTime? @db.Timestamp(0)
   updated_at        DateTime? @db.Timestamp(0)
   creditswitch_code String?   @db.VarChar(199)
+}
+
+model dataProducts {
+  id         Int       @id @default(autoincrement())
+  network    String    @db.VarChar(10)
+  validity   String    @db.VarChar(200)
+  allowance  String    @db.VarChar(70)
+  price      String    @db.VarChar(20)
+  product_id String    @unique @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
 }
 
 enum Users_role {
