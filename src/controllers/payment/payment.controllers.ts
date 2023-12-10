@@ -565,12 +565,12 @@ export const testBankTransfer = async (req: Request, res: Response) => {
 export const testMomo = async (req: Request, res: Response) => {
   try {
     const { data } = await axios.post(
-      'https://api.flutterwave.com/v3/charges?type=debit_ng_account',
+      'https://api.flutterwave.com/v3/charges?type=mono',
       {
-        tx_ref: 'MC-1585230ew9v5050e8ddd',
-        amount: '100',
-        account_bank: '057',
-        account_number: '2114658919',
+        tx_ref: 'MC-1585230ew9v5050e8dhjkss',
+        amount: '500',
+        account_bank: '044',
+        account_number: '0690000032',
         currency: 'NGN',
         email: 'user@example.com',
         phone_number: '0902620185',
@@ -578,8 +578,10 @@ export const testMomo = async (req: Request, res: Response) => {
       },
       { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
     )
+    logger.info(data)
     return res.status(200).json({ message: 'gotten here', data })
   } catch (error) {
+    logger.error(error)
     const err = error as AxiosError<flutterWaveCardErrorRespnse>
 
     if (err) {
