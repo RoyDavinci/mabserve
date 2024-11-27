@@ -187,19 +187,14 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
     logger.info(JSON.stringify(req.body))
     if (req.user == null)
       return res.status(400).json({ message: 'user not authenticated' })
-    const { data } = await axios.post(
-      'https://api.flutterwave.com/v3/transfers',
-      {
-        account_bank,
-        account_number,
-        amount,
-        currency: 'NGN',
-        tx_ref: uuidv4().slice(0, 8),
-        email
-      },
-      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
-    )
+
     const checkUser = new User(req.user.id)
+    const checkVerification = await checkUser.checkKyc()
+    if (!checkVerification?.status) {
+      return res
+        .status(400)
+        .json({ message: checkVerification?.message, success: false })
+    }
     const checkedUser = await checkUser.checkDailyTransactions(Number(amount))
     if (!checkedUser?.status) {
       return res
@@ -219,6 +214,19 @@ export const initiatePaymentToBank = async (req: Request, res: Response) => {
         message: 'insufficient balance to complete transaction',
         success: false
       })
+    const actualAmount = Number(amount) + 20
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/transfers',
+      {
+        account_bank,
+        account_number,
+        amount,
+        currency: 'NGN',
+        tx_ref: uuidv4().slice(0, 8),
+        email
+      },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
     const response = data as unknown as FlutterWaveTransferIntegration
     logger.info(response)
     if (response.status === 'success') {
@@ -449,8 +457,15 @@ export const fundWallet = async (req: Request, res: Response) => {
 }
 
 export const fundWalletViaCard = async (req: Request, res: Response) => {
-  const { amount, card_number, cvv, expiry_month, expiry_year, email } =
-    req.body
+  const {
+    amount,
+    card_number,
+    cvv,
+    expiry_month,
+    expiry_year,
+    email,
+    authorization
+  } = req.body
 
   if (!req.user) {
     return res
@@ -467,7 +482,8 @@ export const fundWalletViaCard = async (req: Request, res: Response) => {
       cvv,
       expiry_month,
       expiry_year,
-      currency: 'NGN'
+      currency: 'NGN',
+      authorization
     })
     const { data } = await axios.post(
       'https://api.flutterwave.com/v3/charges?type=card',
@@ -587,6 +603,33 @@ export const testMomo = async (req: Request, res: Response) => {
     if (err) {
       logger.error(err.response?.data)
       return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const authorization = async (req: Request, res: Response) => {
+  const { city, address, state, country, zipcode } = req.body
+
+  try {
+    const { data } = await axios.post(
+      'https://api.flutterwave.com/v3/charges?type=card',
+      { city, address, state, country, zipcode },
+      { headers: { Authorization: `Bearer ${config.flutterwaveSecret}` } }
+    )
+    return res.status(200).json({ data })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err.response?.data)
+      return res.status(400).json({
+        err: err.response?.data,
         message: err.response?.data.message,
         status: false
       })

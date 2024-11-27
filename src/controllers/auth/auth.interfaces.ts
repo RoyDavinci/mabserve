@@ -194,3 +194,47 @@ export type Bvn = {
     }
   }
 }
+
+export type OtpResponse = {
+  success: boolean
+  message: string
+}
+
+export type OtpValidationResponse = {
+  success: boolean
+  message: string
+  phoneVerificationId: number
+}
+
+export type NINVerificationResponse = {
+  message: string
+  verificationResults: {
+    matchStatus: string
+    matchPercentage: number
+    message: string
+  }
+  bvnData: {
+    bvn: string
+    marital_status: string
+    gender: string
+    surname: string
+    middle_name: string
+    first_name: string
+    state_of_origin: string
+    lga_of_origin: string
+    email: string | null
+    nin: string
+    phone_number_1: string
+    phone_number_2: string | null
+    phone_number_3: string | null
+    phone_number_4: string | null
+    face_image: string
+    full_name: string | null
+    created_at: string
+    country_code: string | null
+    channel: string | null
+    date_of_birth: string
+    business_id: number
+    tid: string
+  }
+}

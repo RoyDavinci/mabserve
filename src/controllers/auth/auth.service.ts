@@ -35,4 +35,12 @@ authRouter.post(
   controllers.verifyBvn
 )
 
+authRouter.post('/verify-phone', authenticateJWT, controllers.veryfophoneNumber)
+authRouter.post(
+  '/verify-phone-otp',
+  authenticateJWT,
+  controllers.verifyPhoneOtp
+)
+authRouter.post('/verify-bvn-nin', authenticateJWT, controllers.bvnValidation)
+
 export default authRouter

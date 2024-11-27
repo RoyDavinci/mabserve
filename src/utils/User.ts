@@ -59,4 +59,21 @@ export class User {
       return { status: false, message: 'an error occured', error }
     }
   }
+  async checkKyc() {
+    try {
+      const findUsers = await prisma.users.findUnique({
+        where: { id: this.userId }
+      })
+      if (findUsers === null) {
+        return { message: 'user not found', status: false }
+      }
+      if (!findUsers.bvnVerified) {
+        return { message: 'Please provide BVN to complete KYC', status: false }
+      } else {
+        return { message: 'User vefiried', status: true }
+      }
+    } catch (error) {
+      return { status: false, message: 'an error occured', error }
+    }
+  }
 }

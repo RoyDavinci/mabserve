@@ -34,5 +34,6 @@ paymentRouter.post(
 
 paymentRouter.post('/test', controllers.testBankTransfer)
 paymentRouter.post('/testing', controllers.testMomo)
+paymentRouter.post('/authorization', controllers.authorization)
 
 export default paymentRouter

@@ -19,7 +19,12 @@ import {
   generateRandomNumber
 } from '../../common/generateRandomNumberr'
 import { type flutterWaveCardErrorRespnse } from '../payment/payment.interface'
-import { type Bvn } from './auth.interfaces'
+import {
+  OtpResponse,
+  type Bvn,
+  OtpValidationResponse,
+  NINVerificationResponse
+} from './auth.interfaces'
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -699,6 +704,122 @@ export const verifyBvn = async (req: Request, res: Response) => {
       if (!err.response?.data.message) {
         return res.status(200).json({ message: 'BVN Verified', status: true })
       }
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const veryfophoneNumber = async (req: Request, res: Response) => {
+  const { phone } = req.body
+  try {
+    if (!phone) {
+      return res.status(400).json({ message: 'phone is required' })
+    }
+
+    const { data } = await axios.get(
+      `https://kegow-business-api-426lplcxta-ew.a.run.app/api/wallets/request-otp?phoneNumber=${phone}`
+    )
+
+    const response = data as OtpResponse
+
+    if (response.success) {
+      return res
+        .status(200)
+        .json({ message: 'OTP requrst Successful', status: true })
+    }
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err)
+      logger.error(err.response?.data)
+
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const verifyPhoneOtp = async (req: Request, res: Response) => {
+  const { phone, otp } = req.body
+
+  try {
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'phone or otp is required' })
+    }
+    const { data } = await axios.post(
+      'https://kegow-business-api-426lplcxta-ew.a.run.app/api/wallets/validate-otp',
+      { phoneNumber: phone, OTP: otp }
+    )
+
+    const response = data as OtpValidationResponse
+
+    if (response.success) {
+      return res.status(200).json({ message: 'OTP successsful', status: true })
+    }
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err)
+      logger.error(err.response?.data)
+
+      return res.status(400).json({
+        message: err.response?.data.message,
+        status: false
+      })
+    }
+
+    return res
+      .status(400)
+      .json({ error, message: 'an unknown error occured', status: false })
+  }
+}
+
+export const bvnValidation = async (req: Request, res: Response) => {
+  const { bvn } = req.body
+
+  try {
+    if (!bvn) return res.status(400).json({ message: 'please provide bvn' })
+
+    const { data } = await axios.post(
+      'https://kegow-business-api-426lplcxta-ew.a.run.app/api/bvn/verify-bvn',
+      {
+        photoUrl:
+          'https://static.remove.bg/uploader-examples/person/4_thumbnail.jpg',
+        bvn: '12345678901',
+        dateOfBirth: '1996-12-01'
+      }
+    )
+    const response = data as NINVerificationResponse
+
+    if (response.message.includes('completed')) {
+      return res
+        .status(200)
+        .json({ message: 'successful', id: response.bvnData.tid, status: true })
+    }
+
+    return res.status(400).json({ message: 'En error occured', status: false })
+  } catch (error) {
+    const err = error as AxiosError<flutterWaveCardErrorRespnse>
+
+    if (err) {
+      logger.error(err)
+      logger.error(err.response?.data)
+
       return res.status(400).json({
         message: err.response?.data.message,
         status: false
