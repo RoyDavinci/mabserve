@@ -5,6 +5,8 @@ import paymentRouter from '../controllers/payment/payment.service'
 import airtimeRouter from '../controllers/airtime/airtime.service'
 import electricityRouter from '../controllers/electricity/electricity.service'
 import webHookRouter from '../controllers/webhook/webhook.service'
+import accountRouter from '../controllers/account/account.service'
+import payoutRouter from '../controllers/payouts/payout.service'
 
 const apiV1Router = Router()
 
@@ -14,5 +16,7 @@ apiV1Router.use('/payment', paymentRouter)
 apiV1Router.use('/airtime', airtimeRouter)
 apiV1Router.use('/electricity', electricityRouter)
 apiV1Router.use('/webhook', webHookRouter)
+apiV1Router.use('/account', accountRouter)
+apiV1Router.use('/payouts', payoutRouter)
 
 export default apiV1Router
