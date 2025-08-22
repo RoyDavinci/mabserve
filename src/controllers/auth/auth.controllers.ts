@@ -20,10 +20,10 @@ import {
 } from '../../common/generateRandomNumberr'
 import { type flutterWaveCardErrorRespnse } from '../payment/payment.interface'
 import {
-  OtpResponse,
+  type OtpResponse,
   type Bvn,
-  OtpValidationResponse,
-  NINVerificationResponse
+  type OtpValidationResponse,
+  type NINVerificationResponse
 } from './auth.interfaces'
 
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -353,10 +353,12 @@ export const getUser = async (req: Request, res: Response) => {
 export const signIn = async (req: Request, res: Response) => {
   const { username, password } = req.body
 
+  logger.info(JSON.stringify(req.body))
+
   try {
     const findUser = await prisma.users.findUnique({
       where: { email: username },
-      include: { wallet: true }
+      include: { wallet: true, virtualAccount: true }
     })
     if (findUser == null) {
       return res

@@ -170,3 +170,155 @@ export type FlutterWavePaymentBankCharge = {
   }
   'event.type': 'BANK_TRANSFER_TRANSACTION'
 }
+
+export type FlutterwavePaymentResponse = {
+  status: string
+  message: string
+  data: PaymentData
+}
+
+export type PaymentData = {
+  id: number
+  txRef: string
+  orderRef: string
+  flwRef: string
+  redirectUrl: string
+  device_fingerprint: string
+  settlement_token: string | null
+  cycle: string
+  amount: number
+  charged_amount: number
+  appfee: number
+  merchantfee: number
+  merchantbearsfee: number
+  chargeResponseCode: string
+  raveRef: string
+  chargeResponseMessage: string
+  authModelUsed: string
+  currency: string
+  IP: string
+  narration: string
+  status: string
+  modalauditid: string
+  vbvrespmessage: string
+  authurl: string
+  vbvrespcode: string
+  acctvalrespmsg: string | null
+  acctvalrespcode: string | null
+  paymentType: string
+  paymentPlan: string | null
+  paymentPage: string | null
+  paymentId: string
+  fraud_status: string
+  charge_type: string
+  is_live: number
+  retry_attempt: string | null
+  getpaidBatchId: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  customerId: number
+  AccountId: number
+  customer: Customer
+  validateInstructions: ValidateInstructions
+}
+
+export type Customer = {
+  id: number
+  phone: string
+  fullName: string
+  customertoken: string | null
+  email: string
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  AccountId: number
+}
+
+export type ValidateInstructions = {
+  valparams: any[]
+  instruction: string
+}
+
+export type ChargeCompleteResponse = {
+  status: string
+  message: string
+  data: ChargeData
+}
+
+export type ChargeData = {
+  id: number
+  txRef: string
+  orderRef: string
+  flwRef: string
+  redirectUrl: string
+  device_fingerprint: string
+  settlement_token: string | null
+  cycle: string
+  amount: number
+  charged_amount: number
+  appfee: number
+  merchantfee: number
+  merchantbearsfee: number
+  chargeResponseCode: string
+  raveRef: string
+  chargeResponseMessage: string
+  authModelUsed: string
+  currency: string
+  IP: string
+  narration: string
+  status: string
+  modalauditid: string
+  vbvrespmessage: string
+  authurl: string
+  vbvrespcode: string
+  acctvalrespmsg: string
+  acctvalrespcode: string
+  paymentType: string
+  paymentPlan: string | null
+  paymentPage: string | null
+  paymentId: string
+  fraud_status: string
+  charge_type: string
+  is_live: number
+  retry_attempt: string | null
+  getpaidBatchId: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  customerId: number
+  AccountId: number
+}
+export type VirtualAccountResponse = {
+  status: string
+  message: string
+  data: {
+    response_code: string
+    response_message: string
+    flw_ref: string
+    order_ref: string
+    account_number: string
+    frequency: string
+    bank_name: string
+    created_at: string
+    expiry_date: string
+    note: string
+    amount: number | null
+  }
+}
+
+export type FlutterwaveChargeResponse = {
+  status: string // "success" | "error" etc.
+  message: string
+  meta: {
+    authorization: {
+      transfer_reference: string // e.g., "N/A" or actual reference
+      transfer_account: string // e.g., "7825397990"
+      transfer_bank: string // e.g., "WEMA BANK"
+      account_expiration: string // e.g., "N/A"
+      transfer_note: string // e.g., "N/A"
+      transfer_amount: number // e.g., 1500
+      mode: string // e.g., "banktransfer"
+    }
+  }
+}
