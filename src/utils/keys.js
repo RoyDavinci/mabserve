@@ -1,6 +1,7 @@
 const forge = require('node-forge')
 const request = require('request-promise-native')
 const md5 = require('md5')
+const { default: config } = require('../config')
 
 var options = {
   url: '',
@@ -73,10 +74,7 @@ class Rave {
   }
 }
 
-var rave = new Rave(
-  'FLWPUBK-ba0a57153f497c03bf34a9e296aa9439-X',
-  'FLWSECK-327b3874ca8e75640a1198a1b75c0b0b-X'
-)
+var rave = new Rave(config.flutterwavePublicKey, config.flutterwaveSecret)
 rave
   .initiatePayment({
     cardno: '5438898014560229',
