@@ -799,11 +799,6 @@ cross-spawn@^7.0.2:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-cryptico@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/cryptico/-/cryptico-1.0.2.tgz#b1310d68270c9dcf50ded54ae13445af2b64071b"
-  integrity sha512-uRFapD3lQBUmZHLugTT8JLHF8Dst/BQMYH9mVnNjdwJTVz5TyLwP9kkGj0sDbKvHVoffhN/IYENO1mYwV9pRqg==
-
 debug@2.6.9:
   version "2.6.9"
   resolved "https://registry.yarnpkg.com/debug/-/debug-2.6.9.tgz#5d128515df134ff327e90a4c93f4e077a536341f"

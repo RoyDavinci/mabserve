@@ -9,9 +9,7 @@ const envSchema = Joi.object({
   FLUTTERWAVE_SECRETKEY: Joi.string().required(),
   FLUTTERWAVE_ENCRYPTION: Joi.string().required(),
   RINGO_EMAIL: Joi.string().required(),
-  RINGO_PASSWORD: Joi.string().required(),
-  PINSPAY_TOKEN: Joi.string().optional(),
-  PINSPAY_BASEURL: Joi.string().optional()
+  RINGO_PASSWORD: Joi.string().required()
 }).unknown()
 
 const { error, value: envVars } = envSchema.validate(process.env)
@@ -24,8 +22,6 @@ const paymentConfig = {
   flutterwaveSecret: envVars.FLUTTERWAVE_SECRETKEY,
   flutterWaveEncryption: envVars.FLUTTERWAVE_ENCRYPTION,
   ringoEmail: envVars.RINGO_EMAIL,
-  ringoPassword: envVars.RINGO_PASSWORD,
-  pinspayToken: envVars.PINSPAY_TOKEN,
-  pinspayUrl: envVars.PINSPAY_BASEURL
+  ringoPassword: envVars.RINGO_PASSWORD
 }
 export default paymentConfig
